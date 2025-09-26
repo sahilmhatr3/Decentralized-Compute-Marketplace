@@ -11,24 +11,26 @@ const ABI = [
   'event JobCanceled(bytes32 indexed jobId, address indexed requester, uint256 amount)'
 ];
 
-export class JobEscrow extends ethers.Contract {
+export class JobEscrow {
+  private contract: ethers.Contract;
+
   constructor(address: string, signer: ethers.Signer) {
-    super(address, ABI, signer);
+    this.contract = new ethers.Contract(address, ABI, signer);
   }
 
   async releaseJob(jobId: string, provider: string): Promise<ethers.ContractTransactionResponse> {
-    return this.release(jobId, provider);
+    return this.contract.release(jobId, provider);
   }
 
   async cancelJob(jobId: string): Promise<ethers.ContractTransactionResponse> {
-    return this.cancel(jobId);
+    return this.contract.cancel(jobId);
   }
 
   async getEscrowAmount(jobId: string): Promise<bigint> {
-    return this.escrowOf(jobId);
+    return this.contract.escrowOf(jobId);
   }
 
   async getRequester(jobId: string): Promise<string> {
-    return this.requesterOf(jobId);
+    return this.contract.requesterOf(jobId);
   }
 }
