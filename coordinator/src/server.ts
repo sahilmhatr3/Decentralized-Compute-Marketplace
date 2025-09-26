@@ -282,20 +282,35 @@ app.get('/jobs/:jobId', (req, res) => {
   }
 });
 
-// GET /jobs - List jobs with optional status filter
+// GET /jobs - List jobs with optional status and provider filters
 app.get('/jobs', (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, provider } = req.query;
     
-    let jobs;
+    // For MVP, get all jobs and filter in memory
+    const allJobs = db.getAllJobs();
+    let filteredJobs = allJobs;
+    
     if (status) {
-      jobs = db.getJobsByStatus(status as string);
-    } else {
-      // For MVP, return all jobs (could be paginated later)
-      jobs = db.getJobsByStatus(''); // This would need a getAllJobs method
+      filteredJobs = filteredJobs.filter(job => job.status === status);
+    }
+    
+    if (provider) {
+      // Get assignments for provider filtering
+      const assignments = filteredJobs.map(job => {
+        const assignment = db.getAssignment(job.job_id);
+        return assignment && assignment.provider_addr === provider ? {
+          jobId: job.job_id,
+          image: 'alpine', // Default for MVP
+          cmd: ['sh', '-c', 'echo Hello from Provider Agent > /out/hello.txt'],
+          outputs: [{ path: '/hello.txt' }]
+        } : null;
+      }).filter(Boolean);
+      
+      return res.json({ jobs: assignments });
     }
 
-    res.json({ jobs });
+    res.json({ jobs: filteredJobs });
   } catch (error) {
     console.error('Error listing jobs:', error);
     res.status(500).json({ error: 'Internal server error' });

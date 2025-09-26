@@ -72,6 +72,11 @@ export class DatabaseManager {
     return stmt.all(status) as Job[];
   }
 
+  getAllJobs(): Job[] {
+    const stmt = this.db.prepare('SELECT * FROM jobs ORDER BY created_at DESC');
+    return stmt.all() as Job[];
+  }
+
   // Assignment operations
   createAssignment(assignment: Assignment) {
     const stmt = this.db.prepare(`
