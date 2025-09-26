@@ -31,4 +31,6 @@ export class BlockchainManager {
   async getRequester(jobId: string): Promise<string> {
     return await this.escrowContract.getRequester(jobId);
   }
+
+  
 }

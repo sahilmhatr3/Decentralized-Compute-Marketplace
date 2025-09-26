@@ -12,11 +12,19 @@ app.use(bodyParser.json({ limit: '2mb' }));
 
 // Initialize database and blockchain
 const db = new DatabaseManager('./data/coord.db');
-const blockchain = new BlockchainManager(
-  process.env.CHAIN_RPC!,
-  process.env.REQUESTER_PRIVKEY!,
-  process.env.ESCROW_ADDRESS!
-);
+let blockchain: BlockchainManager | null = null;
+
+try {
+  blockchain = new BlockchainManager(
+    process.env.CHAIN_RPC!,
+    process.env.REQUESTER_PRIVKEY!,
+    process.env.ESCROW_ADDRESS!
+  );
+  console.log('✅ Blockchain manager initialized');
+} catch (error) {
+  console.error('❌ Blockchain initialization failed:', error);
+  console.log('⚠️  Server will run without blockchain functionality');
+}
 
 // Validation schemas
 const JobSpecSchema = z.object({
@@ -194,6 +202,10 @@ app.post('/jobs/:jobId/accept', async (req, res) => {
       return res.status(400).json({ error: 'Job not ready for acceptance' });
     }
 
+    if (!blockchain) {
+      return res.status(500).json({ error: 'Blockchain not available' });
+    }
+
     const txHash = await blockchain.release(jobId, provider);
     db.updateJobStatus(jobId, 'ACCEPTED');
 
@@ -216,6 +228,10 @@ app.post('/jobs/:jobId/cancel', async (req, res) => {
 
     if (job.status === 'ACCEPTED' || job.status === 'CANCELED') {
       return res.status(400).json({ error: 'Job already finalized' });
+    }
+
+    if (!blockchain) {
+      return res.status(500).json({ error: 'Blockchain not available' });
     }
 
     const txHash = await blockchain.cancel(jobId);
