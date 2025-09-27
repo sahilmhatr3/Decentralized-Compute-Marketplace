@@ -66,6 +66,10 @@ class DatabaseManager {
         const stmt = this.db.prepare('SELECT * FROM jobs WHERE status = ?');
         return stmt.all(status);
     }
+    getAllJobs() {
+        const stmt = this.db.prepare('SELECT * FROM jobs ORDER BY created_at DESC');
+        return stmt.all();
+    }
     // Assignment operations
     createAssignment(assignment) {
         const stmt = this.db.prepare(`
