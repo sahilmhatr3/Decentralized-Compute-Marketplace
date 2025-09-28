@@ -7,6 +7,7 @@ export declare class DatabaseManager {
     updateJobStatus(jobId: string, status: string): void;
     getJob(jobId: string): Job | undefined;
     getJobsByStatus(status: string): Job[];
+    getAllJobs(): Job[];
     createAssignment(assignment: Assignment): void;
     getAssignment(jobId: string): Assignment | undefined;
     createResult(result: Result): void;

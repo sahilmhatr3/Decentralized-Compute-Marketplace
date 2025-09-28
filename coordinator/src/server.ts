@@ -20,10 +20,10 @@ try {
     process.env.REQUESTER_PRIVKEY!,
     process.env.ESCROW_ADDRESS!
   );
-  console.log('✅ Blockchain manager initialized');
+  console.log('Blockchain manager initialized');
 } catch (error) {
-  console.error('❌ Blockchain initialization failed:', error);
-  console.log('⚠️  Server will run without blockchain functionality');
+  console.error('Blockchain initialization failed:', error);
+  console.log('Server will run without blockchain functionality');
 }
 
 // Validation schemas
@@ -299,12 +299,16 @@ app.get('/jobs', (req, res) => {
       // Get assignments for provider filtering
       const assignments = filteredJobs.map(job => {
         const assignment = db.getAssignment(job.job_id);
-        return assignment && assignment.provider_addr === provider ? {
-          jobId: job.job_id,
-          image: 'alpine', // Default for MVP
-          cmd: ['sh', '-c', 'echo Hello from Provider Agent > /out/hello.txt'],
-          outputs: [{ path: '/hello.txt' }]
-        } : null;
+        if (assignment && assignment.provider_addr === provider) {
+          // For MVP, return a generic job spec - in production this would come from the original job creation
+          return {
+            jobId: job.job_id,
+            image: 'alpine',
+            cmd: ['sh', '-c', 'echo "Job executed successfully" > /out/output.txt'],
+            outputs: [{ path: '/output.txt' }]
+          };
+        }
+        return null;
       }).filter(Boolean);
       
       return res.json({ jobs: assignments });

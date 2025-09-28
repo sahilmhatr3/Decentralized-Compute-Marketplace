@@ -49,7 +49,7 @@ type ResultMetadata struct {
 }
 
 func main() {
-	log.Println("🚀 Provider Agent starting...")
+	log.Println("Provider Agent starting...")
 	
 	// Create outputs directory
 	if err := os.MkdirAll(OutputsDir, 0755); err != nil {
@@ -68,18 +68,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to Docker: %v", err)
 	}
-	log.Println("✅ Connected to Docker")
+	log.Println(" Connected to Docker")
 
 	// Main polling loop
 	for {
 		jobs := pollAssignedJobs()
 		for _, job := range jobs {
-			log.Printf("📋 Processing job: %s", job.JobID)
+			log.Printf("Processing job: %s", job.JobID)
 			result := runJob(dockerClient, job)
 			postResults(result)
 		}
 		
-		log.Printf("⏰ Waiting %v for next poll...", PollInterval)
+		log.Printf(" Waiting %v for next poll...", PollInterval)
 		time.Sleep(PollInterval)
 	}
 }
@@ -87,13 +87,13 @@ func main() {
 func pollAssignedJobs() []Job {
 	resp, err := http.Get(fmt.Sprintf("%s/jobs?status=MATCHED&provider=%s", CoordinatorURL, ProviderAddr))
 	if err != nil {
-		log.Printf("❌ Failed to poll jobs: %v", err)
+		log.Printf("Failed to poll jobs: %v", err)
 		return []Job{}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Printf("❌ Polling failed with status: %d", resp.StatusCode)
+		log.Printf(" Polling failed with status: %d", resp.StatusCode)
 		return []Job{}
 	}
 
@@ -101,31 +101,31 @@ func pollAssignedJobs() []Job {
 		Jobs []Job `json:"jobs"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		log.Printf("❌ Failed to decode jobs response: %v", err)
+		log.Printf("Failed to decode jobs response: %v", err)
 		return []Job{}
 	}
 
-	log.Printf("📊 Found %d matched jobs", len(response.Jobs))
+	log.Printf("Found %d matched jobs", len(response.Jobs))
 	return response.Jobs
 }
 
 func runJob(dockerClient *client.Client, job Job) ResultMetadata {
 	startTime := time.Now()
-	log.Printf("🔍 Processing job details - ID: '%s', Image: '%s', Cmd: %v", job.JobID, job.Image, job.Cmd)
+	log.Printf("Processing job details - ID: '%s', Image: '%s', Cmd: %v", job.JobID, job.Image, job.Cmd)
 	
 	// Get absolute path for outputs
 	absOutputsDir, err := filepath.Abs(OutputsDir)
 	if err != nil {
-		log.Printf("❌ Failed to get absolute path: %v", err)
+		log.Printf("Failed to get absolute path: %v", err)
 		return createErrorResult(job.JobID, fmt.Sprintf("Failed to get absolute path: %v", err))
 	}
 	
 	jobOutputDir := filepath.Join(absOutputsDir, job.JobID)
-	log.Printf("📁 Job output directory: %s", jobOutputDir)
+	log.Printf("Job output directory: %s", jobOutputDir)
 	
 	// Create job output directory
 	if err := os.MkdirAll(jobOutputDir, 0755); err != nil {
-		log.Printf("❌ Failed to create output directory: %v", err)
+		log.Printf("Failed to create output directory: %v", err)
 		return createErrorResult(job.JobID, fmt.Sprintf("Failed to create output directory: %v", err))
 	}
 
@@ -152,13 +152,13 @@ func runJob(dockerClient *client.Client, job Job) ResultMetadata {
 	ctx := context.Background()
 	resp, err := dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, fmt.Sprintf("job-%s", job.JobID))
 	if err != nil {
-		log.Printf("❌ Failed to create container: %v", err)
+		log.Printf("Failed to create container: %v", err)
 		return createErrorResult(job.JobID, fmt.Sprintf("Failed to create container: %v", err))
 	}
 
 	// Start container
 	if err := dockerClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
-		log.Printf("❌ Failed to start container: %v", err)
+		log.Printf("Failed to start container: %v", err)
 		return createErrorResult(job.JobID, fmt.Sprintf("Failed to start container: %v", err))
 	}
 
@@ -167,10 +167,10 @@ func runJob(dockerClient *client.Client, job Job) ResultMetadata {
 	select {
 	case err := <-errCh:
 		if err != nil {
-			log.Printf("❌ Container wait error: %v", err)
+			log.Printf(" Container wait error: %v", err)
 		}
 	case status := <-statusCh:
-		log.Printf("✅ Container finished with status: %d", status.StatusCode)
+		log.Printf(" Container finished with status: %d", status.StatusCode)
 	}
 
 	// Get container logs - simplified for MVP
@@ -179,7 +179,7 @@ func runJob(dockerClient *client.Client, job Job) ResultMetadata {
 	
 	// Clean up container
 	if err := dockerClient.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{}); err != nil {
-		log.Printf("⚠️ Failed to remove container: %v", err)
+		log.Printf("Failed to remove container: %v", err)
 	}
 
 	// Process artifacts
@@ -192,14 +192,14 @@ func runJob(dockerClient *client.Client, job Job) ResultMetadata {
 		}
 		filePath := filepath.Join(jobOutputDir, outputPath)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			log.Printf("⚠️ Output file not found: %s", filePath)
+			log.Printf(" Output file not found: %s", filePath)
 			continue
 		}
 
 		// Read file and compute hash
 		fileData, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Printf("❌ Failed to read output file: %v", err)
+			log.Printf("Failed to read output file: %v", err)
 			continue
 		}
 
@@ -237,21 +237,21 @@ func createErrorResult(jobID, errorMsg string) ResultMetadata {
 func postResults(result ResultMetadata) {
 	jsonData, err := json.Marshal(result)
 	if err != nil {
-		log.Printf("❌ Failed to marshal result: %v", err)
+		log.Printf("Failed to marshal result: %v", err)
 		return
 	}
 
 	resp, err := http.Post(CoordinatorURL+"/results", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("❌ Failed to post results: %v", err)
+		log.Printf("Failed to post results: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Printf("❌ Result submission failed with status: %d", resp.StatusCode)
+		log.Printf(" Result submission failed with status: %d", resp.StatusCode)
 		return
 	}
 
-	log.Printf("✅ Results submitted for job: %s", result.JobID)
+	log.Printf(" Results submitted for job: %s", result.JobID)
 }
